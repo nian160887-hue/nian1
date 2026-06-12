@@ -195,14 +195,16 @@
 
   // ================= 存档 =================
   async function load(){
-    try{const r=await window.storage.get("pet-save-v2");
-      if(r&&r.value){S={...S,...JSON.parse(r.value)};}storageOK=true;
-    }catch(e){try{storageOK=!!window.storage;}catch(_){storageOK=false;}}
+    try{
+      const r=localStorage.getItem("pet-save-v2");
+      if(r){S={...S,...JSON.parse(r)};}
+      storageOK=true;
+    }catch(e){storageOK=false;}
   }
   async function save(){
     S.lastSeen=Date.now();
     if(!storageOK)return;
-    try{await window.storage.set("pet-save-v2",JSON.stringify(S));}catch(e){}
+    try{localStorage.setItem("pet-save-v2",JSON.stringify(S));}catch(e){}
   }
 
   // ================= 渲染 =================
