@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电子小宠物 · 完全体</title>
+<style>
+  :root{
+    --bg:#F2F7F5;--card:#fff;--ink:#16302B;--sub:#6B8A84;
+    --teal:#2EC4B6;--teal-deep:#17877D;--orange:#FF9F1C;--pink:#F47C9C;
+    --term:#0F2E2B;--term-t:#9FE8DF;--line:#DCEAE6;--red:#E25C5C;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding:12px 12px 10px}
+  .pet-zone{display:flex;align-items:center;gap:12px;padding:4px 2px 10px}
+  .bot{width:88px;height:78px;position:relative;flex-shrink:0;transition:transform .3s}
+  .bot.talk{animation:bob .9s ease-in-out infinite}
+  .bot.sleep{transform:rotate(8deg)}
+  .bot.sick{filter:grayscale(.5);transform:rotate(-4deg)}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .bot.shake{animation:shake .4s ease-in-out 2}
+  .bot .antenna{position:absolute;top:-10px;left:50%;width:3px;height:12px;background:var(--sub);transform:translateX(-50%)}
+  .bot .antenna::after{content:"";position:absolute;top:-7px;left:50%;transform:translateX(-50%);
+    width:9px;height:9px;border-radius:50%;background:var(--orange);transition:background .3s}
+  .bot.sleep .antenna::after{background:#8FA8A3}
+  .bot .head{width:88px;height:78px;background:var(--card);border:2px solid var(--line);
+    border-radius:24px;box-shadow:0 5px 12px rgba(22,48,43,.08);
+    display:flex;align-items:center;justify-content:center;position:relative}
+  .bot .screen{width:64px;height:46px;background:var(--term);border-radius:12px;
+    display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--term-t);
+    font-family:ui-monospace,Menlo,monospace;letter-spacing:2px}
+  .bot .zzz{position:absolute;top:-4px;right:-10px;font-size:14px;color:var(--sub);display:none}
+  .bot.sleep .zzz{display:block;animation:bob 2s infinite}
+  .poop{position:absolute;bottom:-2px;right:-16px;font-size:18px;cursor:pointer;display:none}
+  .poop.show{display:block}
+  .pet-meta{flex:1;min-width:0}
+  .pet-name{font-size:16px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .pet-name small{font-weight:400;font-size:10px;color:var(--sub)}
+  .love{font-size:11px;color:var(--pink);font-weight:600}
+  .bars{margin-top:6px}
+  .bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+  .bar-row span{font-size:10px;color:var(--sub);width:28px}
+  .bar{flex:1;height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:99px;transition:width .4s}
+  #hungerFill{background:var(--orange)}#moodFill{background:var(--teal)}
+  #energyFill{background:#8E7CC3}#cleanFill{background:#5BB8E8}
+  .acts{display:flex;gap:6px;margin-top:8px}
+  .acts button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:10px;
+    padding:8px 0;font-size:15px;cursor:pointer;font-family:inherit}
+  .acts button:active{background:var(--line)}
+  .acts button:disabled{opacity:.4}
+  .menu{display:none;gap:6px;margin-top:6px}
+  .menu.show{display:flex}
+  .menu button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:10px;
+    padding:6px 0;font-size:12px;cursor:pointer;font-family:inherit}
+  .chat{flex:1;overflow-y:auto;background:var(--card);border:1px solid var(--line);
+    border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:160px}
+  .msg{max-width:82%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.55;
+    word-break:break-word;white-space:pre-wrap}
+  .msg.me{align-self:flex-end;background:var(--teal);color:#fff;border-bottom-right-radius:4px}
+  .msg.pet{align-self:flex-start;background:var(--bg);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .msg.sys{align-self:center;background:none;border:none;color:var(--sub);font-size:11px;padding:2px;text-align:center}
+  .input-row{display:flex;gap:8px;margin-top:10px}
+  .input-row input{flex:1;border:1px solid var(--line);border-radius:12px;padding:11px 12px;
+    font-size:15px;font-family:inherit;background:var(--card);color:var(--ink);outline:none}
+  .input-row input:focus{border-color:var(--teal)}
+  .input-row button{border:none;background:var(--teal);color:#fff;border-radius:12px;
+    padding:0 18px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+
+<div class="pet-zone">
+  <div class="bot" id="bot">
+    <div class="antenna"></div>
+    <div class="head"><div class="screen" id="face">• •</div><span class="zzz">z Z</span></div>
+    <span class="poop" id="poop" title="点我打扫">💩</span>
+  </div>
+  <div class="pet-meta">
+    <div class="pet-name"><span id="petName">小豆</span><small id="renameHint">点名字改名</small>
+      <span class="love" id="loveText">♥ 亲密 Lv.1</span></div>
+    <div class="bars">
+      <div class="bar-row"><span>饱食</span><div class="bar"><i id="hungerFill"></i></div></div>
+      <div class="bar-row"><span>心情</span><div class="bar"><i id="moodFill"></i></div></div>
+      <div class="bar-row"><span>精力</span><div class="bar"><i id="energyFill"></i></div></div>
+      <div class="bar-row"><span>清洁</span><div class="bar"><i id="cleanFill"></i></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="acts">
+  <button id="feedBtn" title="喂食">🍙</button>
+  <button id="patBtn" title="摸头">🖐</button>
+  <button id="bathBtn" title="洗澡">🛁</button>
+  <button id="playBtn" title="猜拳">✊</button>
+  <button id="sleepBtn" title="哄睡/叫醒">🌙</button>
+  <button id="medBtn" title="喂药" style="display:none">💊</button>
+</div>
+<div class="menu" id="foodMenu">
+  <button data-f="fan">🍙 饭团</button><button data-f="yu">🐟 小鱼干</button>
+  <button data-f="nai">🧋 奶茶</button><button data-f="ku">🥒 苦瓜</button>
+</div>
+<div class="menu" id="rpsMenu">
+  <button data-r="0">✊ 石头</button><button data-r="1">✌️ 剪刀</button><button data-r="2">🖐 布</button>
+</div>
+
+<div class="chat" id="chat"></div>
+
+<div class="input-row">
+  <input id="inp" type="text" placeholder="跟它说点什么…" maxlength="200">
+  <button id="sendBtn">发送</button>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const chat=$("chat"),inp=$("inp"),bot=$("bot"),face=$("face");
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  const clamp=v=>Math.max(0,Math.min(100,v));
+
+  // ================= 状态 =================
+  let S={name:"小豆",hunger:70,mood:70,energy:80,clean:90,
+         love:0,sleeping:false,sick:false,poop:false,
+         lastSeen:Date.now(),firstDay:Date.now(),history:[]};
+  let storageOK=false;
+
+  const loveLv=()=>Math.min(10,Math.floor(S.love/50)+1);
+  const callOwner=()=>loveLv()>=6?"主人宝贝":loveLv()>=3?"主人":"喂，那个人类";
+
+  // ================= 语料库 =================
+  const L={
+    greet:["你来啦！等你好久了(｡･ω･｡)","哼，终于想起我了？","你来了你来了！蹭蹭你","本宝在此，有何贵干(¬‿¬)"],
+    greetLong:["你跑哪去了！我都快饿瘪了！","哼！这么久不来，我差点把你忘了…才没有","呜呜呜你终于回来了，抱抱！"],
+    idle:["在想你（瞎说的）","无聊…陪我玩嘛","我刚才打了个滚，你没看见，亏了","盯——(•̀ω•́)","你猜我在想什么？想吃的"],
+    happy:["嘿嘿，今天心情超好！","开心到转圈圈～","你最好了！这句话限时有效","啦啦啦～(ﾉ´ヮ`)ﾉ"],
+    hungry:["饿…饿扁了…快喂我…","肚子在打鼓，咚咚咚…","再不喂我，我就要啃屏幕了","好饿…说话的力气都没了…"],
+    sad:["哼，不理你","心情不好，要摸头才能好","今天的我是苦瓜味的","别惹我，我现在奶凶奶凶的(╬ Ò﹏Ó)"],
+    tired:["困…眼皮在打架…","好困，让我睡会嘛…","哈欠——你说什么，我没听清…"],
+    dirty:["我感觉我臭臭的…给我洗澡！","身上痒痒的，快给我搓澡！"],
+    sick:["呜…我不舒服…头晕晕的…","咳咳…我好像生病了，要吃药药…","难受…抱抱我…"],
+    sleeping:["Zzz……","（翻了个身）Zzz…","（说梦话）唔…大鸡腿…别跑…"],
+    wakeAngry:["干嘛吵我！我刚梦到大餐！(╬ Ò﹏Ó)","呜啊！谁！哦是你…哼，吓我一跳"],
+    feed:{fan:["啊呜！饭团好吃！再来一个？","饭团！我最喜欢了！(≧▽≦)"],
+          yu:["小鱼干！咔嚓咔嚓，香！","鱼鱼！你怎么知道我馋这个！"],
+          nai:["奶茶耶！咕咚咕咚…甜甜的！","嘿嘿，快乐水！不许说我会胖"],
+          ku:["呸！苦瓜？！你是不是不爱我了(╬ Ò﹏Ó)","苦的！！！记仇了，小本本记上了"]},
+    full:["吃不下了…我圆了…","饱了饱了，再吃要滚着走了"],
+    pat:["嘿嘿，再摸一下嘛","蹭蹭你的手心～","摸头杀！心情+15！","（眯眼）舒服…再来亿次"],
+    bath:["搓澡澡！泡泡好多！","哗啦啦～香喷喷的我回来了！","洗完澡毛茸茸（虽然我没有毛）"],
+    bathClean:["我已经很香了！不洗！","刚洗过啦，再洗要掉漆了"],
+    win:["哼哼，我赢啦！你好菜(¬‿¬)","赢了赢了！拿手指头跟我斗？"],
+    lose:["可恶！你出千！再来！","输了…哼，让着你的（嘴硬）"],
+    draw:["平局！心有灵犀了属于是","一样的？你抄我！"],
+    cleanPoop:["嘿嘿，不好意思…生理需求嘛","谢谢主人打扫！爱你！（捂脸）"],
+    rename:n=>["「"+n+"」？嗯…还挺好听，勉强收下","从今天起我就是"+n+"了！重新做机！"],
+    love:["我也喜欢你呀(つ≧▽≦)つ","喜欢喜欢，最喜欢你了！","哎呀别说了，电路都害羞了"],
+    night:["晚安，做个有大餐的梦","晚安啦，明天要来看我哦"],
+    morning:["早上好！今天也要元气满满！","早！我醒得比你早，哼"],
+    confused:["唔…没听懂，但是听起来很厉害","你说啥？本宝的脑子转不动这个","嗯嗯（其实没听懂，点头就完事了）","这个嘛…你猜？"]
+  };
+  // 关键词 → 语料组
+  const KW=[
+    [["饿","吃","饭","零食"],()=>S.hunger<60?L.hungry:["我现在不饿，你饿了吗？要不你喂我看看(¬‿¬)"]],
+    [["喜欢你","爱你","么么","亲亲"],()=>{S.love+=5;return L.love}],
+    [["讨厌","笨蛋","坏"],()=>["呜…说我坏…哼，我才不哭","你才是！哼！（背过身去又偷偷回头）"]],
+    [["晚安","睡觉去了","去睡了"],()=>L.night],
+    [["早","早安","早上好"],()=>L.morning],
+    [["困","累"],()=>["那你快去休息呀，我守着","累了就趴一会，像我这样（示范躺平）"]],
+    [["名字","你是谁","你叫"],()=>["我是"+S.name+"！你的电子小宠物！","本宝名叫"+S.name+"，记好了！"]],
+    [["可爱"],()=>["那是当然！可爱是我的出厂设置(｡･ω･｡)","嘿嘿…再夸一遍，我没听清"]],
+    [["在吗","在不在"],()=>["在在在！一直都在！","我能去哪，我就住这儿(¬‿¬)"]],
+    [["哈哈","嘿嘿","笑"],()=>["你笑起来一定很好看（我猜的）","哈哈哈什么事这么开心，分我一半！"]],
+    [["玩","游戏","猜拳"],()=>["来呀来呀！点下面的✊跟我猜拳！","想玩？猜拳走起，输了不许哭"]],
+    [["臭","脏"],()=>["你说谁臭呢！…好吧可能有一点，给我洗澡"]],
+    [["拜拜","再见","走了"],()=>["这就走啦…早点回来嘛","拜拜…（小声）记得想我"]]
+  ];
+
+  function respond(text){
+    if(S.sleeping){return pick(L.sleeping);}
+    if(S.sick&&Math.random()<0.6)return pick(L.sick);
+    for(const [keys,fn] of KW){
+      if(keys.some(k=>text.includes(k)))return pick(fn());
+    }
+    if(S.hunger<25)return pick(L.hungry);
+    if(S.energy<20)return pick(L.tired);
+    if(S.clean<25)return pick(L.dirty);
+    if(S.mood<25)return pick(L.sad);
+    if(S.mood>85)return pick(L.happy);
+    return Math.random()<0.5?pick(L.idle):pick(L.confused);
+  }
+
+  // ================= 存档 =================
+  async function load(){
+    try{const r=await window.storage.get("pet-save-v2");
+      if(r&&r.value){S={...S,...JSON.parse(r.value)};}storageOK=true;
+    }catch(e){try{storageOK=!!window.storage;}catch(_){storageOK=false;}}
+  }
+  async function save(){
+    S.lastSeen=Date.now();
+    if(!storageOK)return;
+    try{await window.storage.set("pet-save-v2",JSON.stringify(S));}catch(e){}
+  }
+
+  // ================= 渲染 =================
+  const FACES={idle:"• •",happy:"^ ^",hungry:"; ;",mad:"> <",sleep:"– –",sick:"x x",talk:"o o"};
+  function render(){
+    $("petName").textContent=S.name;
+    $("loveText").textContent="♥ 亲密 Lv."+loveLv();
+    $("hungerFill").style.width=S.hunger+"%";
+    $("moodFill").style.width=S.mood+"%";
+    $("energyFill").style.width=S.energy+"%";
+    $("cleanFill").style.width=S.clean+"%";
+    bot.classList.toggle("sleep",S.sleeping);
+    bot.classList.toggle("sick",S.sick&&!S.sleeping);
+    $("poop").classList.toggle("show",S.poop);
+    $("medBtn").style.display=S.sick?"block":"none";
+    $("sleepBtn").textContent=S.sleeping?"☀️":"🌙";
+    let f=FACES.idle;
+    if(S.sleeping)f=FACES.sleep;
+    else if(S.sick)f=FACES.sick;
+    else if(S.hunger<30)f=FACES.hungry;
+    else if(S.mood<30)f=FACES.mad;
+    else if(S.mood>80)f=FACES.happy;
+    face.textContent=f;
+  }
+  function addMsg(text,cls){
+    const el=document.createElement("div");
+    el.className="msg "+cls;el.textContent=text;
+    chat.appendChild(el);
+    while(chat.children.length>80)chat.removeChild(chat.firstChild);
+    chat.scrollTop=chat.scrollHeight;
+  }
+  function petSay(text){
+    bot.classList.add("talk");
+    setTimeout(()=>{addMsg(text,"pet");bot.classList.remove("talk");render();save();},450);
+  }
+
+  // ================= 衰减 & 离线结算 =================
+  function decay(mins){
+    S.hunger=clamp(S.hunger-mins*0.4);
+    S.clean=clamp(S.clean-mins*0.25);
+    if(S.sleeping){S.energy=clamp(S.energy+mins*1.2);}
+    else{S.energy=clamp(S.energy-mins*0.3);}
+    if(S.hunger<20||S.clean<15)S.mood=clamp(S.mood-mins*0.5);
+    if(!S.poop&&Math.random()<mins*0.02)S.poop=true;
+    if(S.poop)S.clean=clamp(S.clean-mins*0.3);
+    if(!S.sick&&(S.hunger<10||S.clean<10)&&Math.random()<0.3){S.sick=true;}
+    if(S.sleeping&&S.energy>=100){S.sleeping=false;petSay(pick(L.morning));}
+  }
+  function offlineSettle(){
+    const mins=Math.min(60*24,(Date.now()-S.lastSeen)/60000);
+    if(mins>1)decay(mins*0.5);
+    return mins;
+  }
+  setInterval(()=>{decay(0.5);render();save();},30000);
+
+  // ================= 互动 =================
+  function guardSleep(){
+    if(!S.sleeping)return false;
+    S.sleeping=false;S.mood=clamp(S.mood-10);
+    bot.classList.add("shake");setTimeout(()=>bot.classList.remove("shake"),900);
+    petSay(pick(L.wakeAngry));return true;
+  }
+  // 喂食
+  $("feedBtn").onclick=()=>{ if(guardSleep())return;
+    $("foodMenu").classList.toggle("show");$("rpsMenu").classList.remove("show");};
+  $("foodMenu").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    $("foodMenu").classList.remove("show");
+    const f=b.dataset.f;
+    if(S.hunger>92){petSay(pick(L.full));return;}
+    if(f==="ku"){S.mood=clamp(S.mood-8);S.hunger=clamp(S.hunger+5);S.love+=1;petSay(pick(L.feed.ku));}
+    else{S.hunger=clamp(S.hunger+22);S.mood=clamp(S.mood+5);S.love+=2;
+      if(S.sick&&Math.random()<0.2)S.sick=false;
+      petSay(pick(L.feed[f]));}
+  });
+  // 摸头
+  $("patBtn").onclick=()=>{ if(guardSleep())return;
+    S.mood=clamp(S.mood+12);S.love+=2;petSay(pick(L.pat));};
+  // 洗澡
+  $("bathBtn").onclick=()=>{ if(guardSleep())return;
+    if(S.clean>85){petSay(pick(L.bathClean));return;}
+    S.clean=100;S.mood=clamp(S.mood+8);S.love+=2;petSay(pick(L.bath));};
+  // 猜拳
+  $("playBtn").onclick=()=>{ if(guardSleep())return;
+    if(S.energy<15){petSay(pick(L.tired));return;}
+    $("rpsMenu").classList.toggle("show");$("foodMenu").classList.remove("show");};
+  $("rpsMenu").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    $("rpsMenu").classList.remove("show");
+    const me=+b.dataset.r, pet=Math.floor(Math.random()*3);
+    const names=["✊","✌️","🖐"];
+    addMsg("我出 "+names[me],"me");
+    S.energy=clamp(S.energy-8);S.love+=1;
+    let r;
+    if(me===pet)r=pick(L.draw);
+    else if((me===0&&pet===1)||(me===1&&pet===2)||(me===2&&pet===0)){S.mood=clamp(S.mood+3);r=pick(L.lose);}
+    else{S.mood=clamp(S.mood+8);r=pick(L.win);}
+    petSay("我出 "+names[pet]+"！"+r);
+  });
+  // 哄睡/叫醒
+  $("sleepBtn").onclick=()=>{
+    if(S.sleeping){S.sleeping=false;petSay(pick(L.wakeAngry));return;}
+    if(S.energy>70){petSay("我不困！精力满满，陪我玩！");return;}
+    S.sleeping=true;petSay("唔…那我睡了…晚安…Zzz");
+  };
+  // 喂药
+  $("medBtn").onclick=()=>{ if(guardSleep())return;
+    S.sick=false;S.mood=clamp(S.mood+5);S.love+=3;
+    petSay("呜，药苦苦的…但是为了你我吃！…咦，好多了！");};
+  // 铲屎
+  $("poop").onclick=()=>{S.poop=false;S.clean=clamp(S.clean+15);S.love+=1;petSay(pick(L.cleanPoop));};
+  // 改名
+  $("petName").onclick=$("renameHint").onclick=()=>{
+    const n=prompt("给它改个名字：",S.name);
+    if(n&&n.trim()){S.name=n.trim().slice(0,8);render();save();petSay(pick(L.rename(S.name)));}
+  };
+  // 聊天
+  function send(){
+    const t=inp.value.trim();if(!t)return;
+    inp.value="";addMsg(t,"me");
+    S.love+=1;S.mood=clamp(S.mood+1);
+    petSay(respond(t));
+  }
+  $("sendBtn").onclick=send;
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter")send();});
+
+  // ================= 启动 =================
+  load().then(()=>{
+    const away=offlineSettle();
+    render();
+    const days=Math.floor((Date.now()-S.firstDay)/86400000)+1;
+    addMsg("—— 陪伴第 "+days+" 天 ——","sys");
+    if(!storageOK)addMsg("（这个环境不能存档，关掉页面会失忆）","sys");
+    if(away>180&&!S.sleeping)petSay(pick(L.greetLong));
+    else if(!S.sleeping)petSay(pick(L.greet));
+    save();
+  });
+})();
+</script>
+</body>
+</html>
