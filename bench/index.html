@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="bench-token" content="__TOKEN__">
 <title>工作台</title>
 <style>
 :root{
@@ -59,10 +60,13 @@ button{font:inherit;color:inherit;cursor:pointer}
 .ed textarea{background:transparent;color:transparent;caret-color:var(--ink);resize:none;outline:none}
 .ed textarea::selection{background:rgba(183,146,107,.3);color:transparent}
 .k{color:var(--c-kw)}.s{color:var(--c-str)}.c{color:var(--c-com);font-style:italic}.n{color:var(--c-num)}.p{color:var(--c-pre)}
-.out{flex:none;height:30%;min-height:90px;border-top:1px solid var(--line);background:var(--bg);display:flex;flex-direction:column}
+.out{flex:none;height:32%;min-height:110px;border-top:1px solid var(--line);background:var(--bg);display:flex}
+.out .col{display:flex;flex-direction:column;min-width:0;flex:1}
+.out .col.in{flex:none;width:30%;border-right:1px solid var(--line)}
 .out h4{margin:0;padding:8px 14px 4px;font-size:12px;color:var(--muted);font-weight:500}
-.out pre{margin:0;padding:4px 14px 12px;font:13px/1.6 var(--mono);overflow:auto;flex:1;white-space:pre-wrap}
+.out pre,.out textarea{margin:0;padding:4px 14px 12px;font:13px/1.6 var(--mono);overflow:auto;flex:1;white-space:pre-wrap;border:0;background:transparent;color:var(--ink);outline:none;resize:none}
 .out .err{color:#B0483A}
+.out .dim{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -88,11 +92,11 @@ button{font:inherit;color:inherit;cursor:pointer}
     <span class="sp"></span>
     <span id="codeBtns" hidden>
       <button class="btn ghost" id="sample">示例</button>
-      <button class="btn" id="run">▶ 运行</button>
+      <button class="btn" id="run" title="快捷键 F5">▶ 运行</button>
     </span>
   </header>
 
-  <section class="view on" id="v-chat"><iframe src="../chat/" title="聊天"></iframe></section>
+  <section class="view on" id="v-chat"><iframe title="聊天"></iframe></section>
 
   <section class="view" id="v-code">
     <div class="editor">
@@ -102,7 +106,10 @@ button{font:inherit;color:inherit;cursor:pointer}
         <textarea id="ta" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea>
       </div>
     </div>
-    <div class="out"><h4>输出</h4><pre id="outp">点"运行"后，结果显示在这里。</pre></div>
+    <div class="out">
+      <div class="col in"><h4>输入（程序要读的数据，没有就留空）</h4><textarea id="stdin" spellcheck="false"></textarea></div>
+      <div class="col"><h4>输出</h4><pre id="outp">点"运行"后，结果显示在这里。</pre></div>
+    </div>
   </section>
 </div>
 
@@ -236,11 +243,43 @@ $('sample').addEventListener('click',function(){
 var saved='';try{saved=localStorage.getItem('bench.code')||''}catch(e){}
 ta.value=saved||SAMPLE;refresh();
 
-/* 运行：先占位，下一步接电脑上的编译器 */
-$('run').addEventListener('click',function(){
-  var o=$('outp');o.className='';
-  o.textContent='还没有连上你电脑上的编译器。\n这个按钮是预留的，下一步接上之后，点它就会编译并显示结果。';
+/* 运行：把代码交给电脑上的启动器去编译、运行 */
+function setOut(text,cls){var o=$('outp');o.className=cls||'';o.textContent=text}
+var runBtn=$('run');
+function run(){
+  var m=document.querySelector('meta[name=bench-token]');
+  var tok=m?m.content:'';
+  if(!tok||tok.indexOf('__TOK')===0){
+    setOut('这个页面没有连上编译器。\n请在电脑上双击 start.bat，用它自动打开的页面来运行。','dim');return;
+  }
+  if(runBtn.disabled)return;
+  runBtn.disabled=true;runBtn.textContent='运行中…';setOut('编译中…','dim');
+  fetch('/run',{method:'POST',headers:{'Content-Type':'application/json','X-Token':tok},
+    body:JSON.stringify({code:ta.value,stdin:$('stdin').value})})
+  .then(function(r){return r.json()})
+  .then(function(j){
+    var o=$('outp');o.className='';o.textContent='';
+    function add(t,c){var s=document.createElement('span');if(c)s.className=c;s.textContent=t;o.appendChild(s)}
+    if(!j.compiled){add('编译失败：\n','err');add(j.compileLog||'');return}
+    if(j.compileLog){add('[编译提示]\n'+j.compileLog+'\n','dim')}
+    add(j.output||'');
+    if(j.timedOut)add('\n[超过 5 秒，已强行停止]','err');
+    else add('\n[程序结束，返回值 '+j.exit+']','dim');
+  })
+  .catch(function(){setOut('连不上启动器。它的黑窗口是不是被关了？重新双击 start.bat。','err')})
+  .then(function(){runBtn.disabled=false;runBtn.textContent='▶ 运行'});
+}
+runBtn.addEventListener('click',run);
+document.addEventListener('keydown',function(e){
+  if(e.key==='F5'&&$('v-code').classList.contains('on')){e.preventDefault();run()}
 });
+
+/* 在本机地址打开时，聊天页要指向网上的那一份 */
+(function(){
+  var f=document.querySelector('#v-chat iframe');
+  var local=(location.hostname==='127.0.0.1'||location.hostname==='localhost');
+  f.src=local?'https://nian160887-hue.github.io/nian1/chat/':'../chat/';
+})();
 
 /* 恢复上次页面 */
 var lv='chat';try{lv=localStorage.getItem('bench.view')||'chat'}catch(e){}
