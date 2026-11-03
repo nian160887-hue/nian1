@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工作台</title>
+<style>
+:root{
+  --bg:#F4EFE8; --panel:#FBF8F3; --ink:#3B352E; --muted:#8A8176; --line:#E4DCD0;
+  --accent:#B7926B; --accent-ink:#fff; --hover:#EFE8DD;
+  --c-kw:#9A5B3C; --c-str:#6E8B5B; --c-com:#A59C90; --c-num:#B5733A; --c-pre:#7A6A9A;
+  --mono:ui-monospace,"Cascadia Mono","Consolas","SFMono-Regular",Menlo,monospace;
+  --sbw:208px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;display:flex;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+
+/* 侧边栏 */
+.side{width:var(--sbw);flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;transition:margin-left .2s}
+.side.off{margin-left:calc(var(--sbw) * -1)}
+.brand{padding:16px 16px 10px;font-weight:600;letter-spacing:.02em}
+.nav{padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+.nav button{border:0;background:none;text-align:left;padding:9px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center}
+.nav button:hover{background:var(--hover)}
+.nav button.on{background:var(--accent);color:var(--accent-ink)}
+.nav button[disabled]{color:var(--muted);cursor:default;background:none}
+.nav small{font-size:11px;opacity:.7}
+.sp{flex:1}
+.foot{padding:12px 16px;color:var(--muted);font-size:12px}
+
+/* 主区 */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{height:46px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.top .t{font-weight:600}
+.ico{border:1px solid var(--line);background:var(--bg);border-radius:8px;width:30px;height:30px;line-height:1}
+.ico:hover{background:var(--hover)}
+.top .sp{flex:1}
+.btn{border:0;border-radius:9px;padding:6px 14px;background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.view{flex:1;min-height:0;display:none}
+.view.on{display:flex}
+
+/* 聊天 */
+#v-chat iframe{flex:1;border:0;width:100%;background:var(--bg)}
+
+/* 代码 */
+#v-code{flex-direction:column}
+.editor{flex:1;min-height:0;display:flex;background:var(--panel)}
+.gut{flex:none;width:48px;padding:12px 8px 12px 0;text-align:right;color:var(--c-com);font:13px/20px var(--mono);overflow:hidden;user-select:none;border-right:1px solid var(--line);white-space:pre}
+.ed{position:relative;flex:1;min-width:0}
+.ed pre,.ed textarea{
+  position:absolute;inset:0;margin:0;padding:12px 14px;border:0;
+  font:13px/20px var(--mono);tab-size:4;white-space:pre;overflow:auto;letter-spacing:0;
+}
+.ed pre{pointer-events:none;color:var(--ink);background:transparent}
+.ed textarea{background:transparent;color:transparent;caret-color:var(--ink);resize:none;outline:none}
+.ed textarea::selection{background:rgba(183,146,107,.3);color:transparent}
+.k{color:var(--c-kw)}.s{color:var(--c-str)}.c{color:var(--c-com);font-style:italic}.n{color:var(--c-num)}.p{color:var(--c-pre)}
+.out{flex:none;height:30%;min-height:90px;border-top:1px solid var(--line);background:var(--bg);display:flex;flex-direction:column}
+.out h4{margin:0;padding:8px 14px 4px;font-size:12px;color:var(--muted);font-weight:500}
+.out pre{margin:0;padding:4px 14px 12px;font:13px/1.6 var(--mono);overflow:auto;flex:1;white-space:pre-wrap}
+.out .err{color:#B0483A}
+</style>
+</head>
+<body>
+
+<aside class="side" id="side">
+  <div class="brand">我的工作台</div>
+  <nav class="nav" id="nav">
+    <button data-v="chat" class="on">聊天</button>
+    <button data-v="code">代码</button>
+    <button disabled>终端 <small>待做</small></button>
+    <button disabled>文件 <small>待做</small></button>
+    <button disabled>课表 <small>待做</small></button>
+    <button disabled>笔记 <small>待做</small></button>
+  </nav>
+  <div class="sp"></div>
+  <div class="foot">第一版 · 外壳</div>
+</aside>
+
+<div class="main">
+  <header class="top">
+    <button class="ico" id="tog" aria-label="收起侧边栏">≡</button>
+    <span class="t" id="title">聊天</span>
+    <span class="sp"></span>
+    <span id="codeBtns" hidden>
+      <button class="btn ghost" id="sample">示例</button>
+      <button class="btn" id="run">▶ 运行</button>
+    </span>
+  </header>
+
+  <section class="view on" id="v-chat"><iframe src="../chat/" title="聊天"></iframe></section>
+
+  <section class="view" id="v-code">
+    <div class="editor">
+      <div class="gut" id="gut">1</div>
+      <div class="ed">
+        <pre id="hl" aria-hidden="true"></pre>
+        <textarea id="ta" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea>
+      </div>
+    </div>
+    <div class="out"><h4>输出</h4><pre id="outp">点"运行"后，结果显示在这里。</pre></div>
+  </section>
+</div>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+
+/* ---------- 侧边栏 / 页面切换 ---------- */
+var titles={chat:'聊天',code:'代码'};
+function show(v){
+  ['chat','code'].forEach(function(k){$('v-'+k).classList.toggle('on',k===v)});
+  [].forEach.call($('nav').querySelectorAll('button[data-v]'),function(b){b.classList.toggle('on',b.dataset.v===v)});
+  $('title').textContent=titles[v];
+  $('codeBtns').hidden=(v!=='code');
+  if(v==='code')$('ta').focus();
+  try{localStorage.setItem('bench.view',v)}catch(e){}
+}
+$('nav').addEventListener('click',function(e){var b=e.target.closest('button[data-v]');if(b)show(b.dataset.v)});
+$('tog').addEventListener('click',function(){$('side').classList.toggle('off')});
+
+/* ---------- 代码编辑器 ---------- */
+var ta=$('ta'),hl=$('hl'),gut=$('gut');
+var KW='auto break case char const continue default do double else enum extern float for goto if inline int long register return short signed sizeof static struct switch typedef union unsigned void volatile while';
+var KWSET={};KW.split(' ').forEach(function(w){KWSET[w]=1});
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function highlight(src){
+  var re=/(\/\*[\s\S]*?(?:\*\/|$)|\/\/[^\n]*)|("(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?)|(^[ \t]*#[^\n]*)|(\b\d+(?:\.\d+)?\b)|(\b[A-Za-z_]\w*\b)/gm;
+  var out='',last=0,m;
+  while((m=re.exec(src))){
+    out+=esc(src.slice(last,m.index));
+    if(m[1])out+='<span class="c">'+esc(m[1])+'</span>';
+    else if(m[2])out+='<span class="s">'+esc(m[2])+'</span>';
+    else if(m[3])out+='<span class="p">'+esc(m[3])+'</span>';
+    else if(m[4])out+='<span class="n">'+esc(m[4])+'</span>';
+    else if(KWSET[m[5]])out+='<span class="k">'+esc(m[5])+'</span>';
+    else out+=esc(m[5]);
+    last=re.lastIndex;
+    if(m[0]==='')re.lastIndex++;
+  }
+  return out+esc(src.slice(last));
+}
+function refresh(){
+  var v=ta.value;
+  hl.innerHTML=highlight(v)+'\n';
+  var n=v.split('\n').length,g='';
+  for(var i=1;i<=n;i++)g+=i+(i<n?'\n':'');
+  gut.textContent=g;
+  syncScroll();
+  try{localStorage.setItem('bench.code',v)}catch(e){}
+}
+function syncScroll(){hl.scrollTop=ta.scrollTop;hl.scrollLeft=ta.scrollLeft;gut.scrollTop=ta.scrollTop}
+ta.addEventListener('scroll',syncScroll);
+ta.addEventListener('input',refresh);
+
+/* 编辑操作：用 execCommand 以保留撤销 */
+function ins(text){
+  ta.focus();
+  var ok=false;
+  try{ok=document.execCommand('insertText',false,text)}catch(e){}
+  if(!ok){ta.setRangeText(text,ta.selectionStart,ta.selectionEnd,'end');refresh()}
+}
+function lineStart(pos){return ta.value.lastIndexOf('\n',pos-1)+1}
+var PAIRS={'(':')','[':']','{':'}','"':'"',"'":"'"};
+var CLOSERS={')':1,']':1,'}':1,'"':1,"'":1};
+
+ta.addEventListener('keydown',function(e){
+  if(e.isComposing||e.ctrlKey||e.metaKey||e.altKey)return;
+  var v=ta.value,s=ta.selectionStart,t=ta.selectionEnd,k=e.key;
+
+  if(k==='Enter'){
+    e.preventDefault();
+    var ls=lineStart(s),line=v.slice(ls,s),indent=(line.match(/^[ \t]*/)||[''])[0];
+    var before=v.charAt(s-1),after=v.charAt(t);
+    if(before==='{'&&after==='}'){
+      ins('\n'+indent+'    '+'\n'+indent);
+      var p=s+1+indent.length+4;ta.setSelectionRange(p,p);
+    }else if(before==='{'){
+      ins('\n'+indent+'    ');
+    }else{
+      ins('\n'+indent);
+    }
+    return;
+  }
+  if(k==='Tab'){
+    e.preventDefault();
+    if(s===t&&!e.shiftKey){ins('    ');return}
+    var a=lineStart(s),b=t,blk=v.slice(a,b),lines=blk.split('\n'),res;
+    if(e.shiftKey)res=lines.map(function(l){return l.replace(/^( {1,4}|\t)/,'')});
+    else res=lines.map(function(l){return '    '+l});
+    ta.setSelectionRange(a,b);ins(res.join('\n'));
+    ta.setSelectionRange(a,a+res.join('\n').length);
+    return;
+  }
+  if(k==='Backspace'&&s===t&&s>0){
+    var l=v.charAt(s-1),r=v.charAt(s);
+    if(PAIRS[l]&&PAIRS[l]===r){
+      e.preventDefault();ta.setSelectionRange(s-1,s+1);ins('');return;
+    }
+    /* 行首空白里按退格，一次退 4 格 */
+    var ls2=lineStart(s),pre=v.slice(ls2,s);
+    if(pre.length>=4&&/^ +$/.test(pre)&&pre.length%4===0){
+      e.preventDefault();ta.setSelectionRange(s-4,s);ins('');return;
+    }
+    return;
+  }
+  if(CLOSERS[k]&&s===t&&v.charAt(s)===k){
+    /* 输入的是闭合符，而且后面刚好就是它：直接跳过去 */
+    e.preventDefault();ta.setSelectionRange(s+1,s+1);return;
+  }
+  if(PAIRS[k]){
+    var prev=v.charAt(s-1);
+    if((k==='"'||k==="'")&&/\w/.test(prev))return;   /* don't 里的撇号不补 */
+    e.preventDefault();
+    if(s!==t){ins(k+v.slice(s,t)+PAIRS[k]);ta.setSelectionRange(s+1,t+1);return}
+    ins(k+PAIRS[k]);ta.setSelectionRange(s+1,s+1);return;
+  }
+  if(k==='}'&&s===t){
+    /* 行里只有空白时，输入 } 自动退一级 */
+    var ls3=lineStart(s),pre3=v.slice(ls3,s);
+    if(/^ +$/.test(pre3)&&pre3.length>=4){
+      e.preventDefault();ta.setSelectionRange(s-4,s);ins('}');return;
+    }
+  }
+});
+
+/* 示例 + 载入上次内容 */
+var SAMPLE='#include <stdio.h>\n\nint main(void) {\n    int n = 5, sum = 0;\n    for (int i = 1; i <= n; i++) {\n        sum += i;\n    }\n    printf("1 到 %d 的和是 %d\\n", n, sum);\n    return 0;\n}\n';
+$('sample').addEventListener('click',function(){
+  ta.value=SAMPLE;refresh();ta.focus();
+});
+var saved='';try{saved=localStorage.getItem('bench.code')||''}catch(e){}
+ta.value=saved||SAMPLE;refresh();
+
+/* 运行：先占位，下一步接电脑上的编译器 */
+$('run').addEventListener('click',function(){
+  var o=$('outp');o.className='';
+  o.textContent='还没有连上你电脑上的编译器。\n这个按钮是预留的，下一步接上之后，点它就会编译并显示结果。';
+});
+
+/* 恢复上次页面 */
+var lv='chat';try{lv=localStorage.getItem('bench.view')||'chat'}catch(e){}
+show(titles[lv]?lv:'chat');
+})();
+</script>
+</body>
+</html>
